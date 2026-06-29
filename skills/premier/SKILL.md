@@ -27,15 +27,23 @@ phases:
 
 ## Naming
 
-- Integration branch: `premier/<task>`
+- Integration branch: `premier/<task>/_integration`
 - Subtask branch: `premier/<task>/<subtask-id>`
 - Worktree path: `<project>/.premier-wt/<task>-<subtask-id>`
 
+Git stores refs as files under `refs/heads/`, so a ref cannot also be a
+directory of other refs. The integration branch is therefore a sibling leaf
+`premier/<task>/_integration`, never `premier/<task>` itself - otherwise
+`premier/<task>/<subtask-id>` cannot be created.
+
 ## Algorithm
 
-1. **Setup.** In the target project, create the integration branch from `main`
-   if it does not exist:
-   `git -C <project> branch premier/<task> main`
+1. **Setup.** Check out the integration branch in the target project's main
+   working tree, created from `main` if absent:
+   `git -C <project> switch -c premier/<task>/_integration main`
+   (or `git -C <project> switch premier/<task>/_integration` if it already
+   exists). Subtask branches merge INTO this checked-out branch; `main` is only
+   touched at step 7.
 
 2. **Order phases** by `depends_on` (topological). A phase is *ready* when every
    phase in its `depends_on` has fully landed.
@@ -43,7 +51,7 @@ phases:
 3. **Dispatch the ready phase.** For each subtask in it (at most 5 in flight):
    - Create the worktree, branched off the integration branch (so it sees
      everything landed so far):
-     `git -C <project> worktree add <project>/.premier-wt/<task>-<sub> -b premier/<task>/<sub> premier/<task>`
+     `git -C <project> worktree add <project>/.premier-wt/<task>-<sub> -b premier/<task>/<sub> premier/<task>/_integration`
    - Dispatch a crewmate as a **background** `Agent` (`run_in_background: true`,
      `subagent_type: general-purpose`) with this brief:
      - "Your working directory is the ABSOLUTE path `<worktree>`. Operate only
@@ -62,14 +70,15 @@ phases:
 5. **On each crewmate completion:**
    - **Review.** For each agent in the subtask's `review` list, dispatch it
      (foreground `Agent`) on the worktree diff:
-     `git -C <worktree> diff premier/<task>...HEAD`
+     `git -C <worktree> diff premier/<task>/_integration...HEAD`
      Ask it for a verdict: clean, or a list of concrete problems.
    - **If problems and attempts < 2:** re-dispatch the crewmate (background)
      into the same worktree with the review feedback appended to the brief.
      attempts += 1. Return to Wait.
-   - **If clean:** merge and clean up:
+   - **If clean:** merge into the integration branch (the main tree is on it)
+     and clean up:
      `git -C <project> merge --no-ff premier/<task>/<sub> -m "premier: land <sub>"`
-     run from the integration branch, then
+     then
      `git -C <project> worktree remove <project>/.premier-wt/<task>-<sub> --force`
      Mark the subtask `landed`.
    - **If attempts exhausted:** mark the subtask `blocked`, tell the human
@@ -80,8 +89,8 @@ phases:
    now-updated integration branch, so they see this phase's outputs.
 
 7. **Finish.** When all phases are landed, auto-merge to `main` (no human gate):
-   `git -C <project> checkout main`
-   `git -C <project> merge --no-ff premier/<task> -m "premier: complete <task>"`
+   `git -C <project> switch main`
+   `git -C <project> merge --no-ff premier/<task>/_integration -m "premier: complete <task>"`
    unless the human said otherwise for this task in chat.
 
 8. **Cleanup.** Prune any remaining worktrees: `git -C <project> worktree prune`.
