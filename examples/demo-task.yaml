@@ -1,0 +1,20 @@
+task: demo-page
+# project is passed at run time, not hardcoded here
+phases:
+  - id: A
+    subtasks:
+      - id: button
+        brief: "Create file shared/button.txt whose only content is the word BUTTON"
+        accept: "shared/button.txt exists and contains BUTTON"
+        review: [code-quality]
+      - id: input
+        brief: "Create file shared/input.txt whose only content is the word INPUT"
+        accept: "shared/input.txt exists and contains INPUT"
+        review: [code-quality]
+  - id: B
+    depends_on: [A]
+    subtasks:
+      - id: home
+        brief: "Create file pages/home.txt containing exactly one line: uses button,input"
+        accept: "pages/home.txt exists and references button and input"
+        review: [code-quality]
