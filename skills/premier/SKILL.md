@@ -25,6 +25,48 @@ phases:
         review: [<agent name>, ...] # which review subagents to run
 ```
 
+## Task source (Notion vs YAML)
+
+Given the target project path, resolve its board:
+`scripts/resolve-board.sh <project>` prints a Notion data source id, or empty.
+
+- Non-empty -> Notion mode (this section + Status write-back below).
+- Empty -> YAML mode: read the local stub the user named, exactly as in the
+  core Algorithm. Nothing else in this section applies.
+
+## Notion mode
+
+On `запускай` (the user says "запускай" / "launch" / "go"):
+
+1. Query ready tasks from the data source (Notion `query-data-sources`, SQL):
+   `SELECT url, "Task", "Depends on" FROM "collection://<ds>" WHERE "Status" = 'To do'`
+2. Build the cross-task graph from `Depends on`: a task is runnable only when
+   every task it depends on is already `Done`. Tasks with an unfinished
+   dependency stay queued (do not start them; see write-back for `Blocked`).
+3. For each runnable task, fetch its page (Notion `fetch`) and extract the FIRST
+   fenced ```yaml block from the body. Parse its `phases:` - this is the same
+   phase structure the YAML stub uses. The `Task` title is the `<task>` name;
+   the project is this board's repo.
+4. Run each task through the SAME core Algorithm (steps 1-8: integration branch,
+   worktrees, dispatch, wait, review, auto-fix, merge, phase barrier, final merge
+   to `main`). Nothing in the loop changes; only the source of the spec differs.
+5. Respect the cross-task limit of 5 crewmates in flight across all running tasks.
+
+## Status write-back (Notion mode only)
+
+Update the task's Notion page (Notion `update-page`) at these transitions:
+
+- A task is picked up for execution -> set `Status = In Progress`.
+- A task's final merge to `main` succeeds -> set `Status = Done` and write the
+  crewmate summary into `Result`.
+- A task cannot start because a dependency is not yet `Done`, OR a subtask is
+  stuck after the 2 auto-fix attempts -> set `Status = Blocked` and put the
+  reason in `Result`.
+- Total give-up -> set `Status = Failed`.
+
+After any task reaches `Done`, re-evaluate the queued tasks: any whose
+dependencies are now all `Done` become runnable (back to step 3).
+
 ## Naming
 
 - Integration branch: `premier/<task>/_integration`
