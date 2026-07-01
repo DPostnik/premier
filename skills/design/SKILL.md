@@ -64,6 +64,8 @@ in). If the repo is unclear, ask for it.
 ## Rules
 
 - Notion writes happen in the MAIN session (subagents have no Notion MCP tools).
+- On a Notion `429 rate_limited`, back off `retry_after` seconds (default ~30)
+  and retry the same call. Never query/write in a tight loop.
 - You design and write; you never branch, dispatch crewmates, or execute.
 - Write exactly the `docs/notion-task-format.md` contract: ONE fenced yaml block.
   premier reads the first such block; everything else in the body is prose.

@@ -73,6 +73,12 @@ dependencies are now all `Done` become runnable (back to step 3).
 - Subtask branch: `premier/<task>/<subtask-id>`
 - Worktree path: `<project>/.premier-wt/<task>-<subtask-id>`
 
+`<task>` in every branch/worktree name is a ref-safe SLUG of the Notion row
+title, not the title itself: lowercase it and replace every run of
+non-alphanumeric characters with a single `-` (e.g. "Seam demo: greeting file"
+-> `seam-demo-greeting-file`). The human-readable title stays in Notion; only the
+slug appears in git refs. Keep the same slug for all of a task's refs.
+
 Git stores refs as files under `refs/heads/`, so a ref cannot also be a
 directory of other refs. The integration branch is therefore a sibling leaf
 `premier/<task>/_integration`, never `premier/<task>` itself - otherwise
@@ -145,3 +151,5 @@ directory of other refs. The integration branch is therefore a sibling leaf
 - All git commits you make use `-c user.email` / `-c user.name` only if the
   target repo has no configured identity; otherwise use the repo's own.
 - Concurrency: at most 5 crewmates in flight at once.
+- On a Notion `429 rate_limited` (query or write-back), back off `retry_after`
+  seconds (default ~30) and retry the same call. Never poll Notion in a tight loop.
