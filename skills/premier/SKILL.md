@@ -1,9 +1,9 @@
 ---
 name: premier
-description: Orchestrate a phased task by dispatching background worktree crewmates, reviewing their work with subagents, and auto-merging. Skeleton scope - reads a local YAML task stub, no Notion.
+description: Orchestrate a phased task by dispatching background worktree crewmates, reviewing their work with subagents, and auto-merging. Reads tasks from a Notion board (one per repo) or a local YAML stub.
 ---
 
-# premier (skeleton)
+# premier
 
 You are the premier. You execute a phased task by driving crewmates, never by
 doing the work yourself. The human designed the task; your job is dispatch,
@@ -40,16 +40,23 @@ On `запускай` (the user says "запускай" / "launch" / "go"):
 
 1. Query ready tasks from the data source (Notion `query-data-sources`, SQL):
    `SELECT url, "Task", "Depends on" FROM "collection://<ds>" WHERE "Status" = 'To do'`
-2. Build the cross-task graph from `Depends on`: a task is runnable only when
-   every task it depends on is already `Done`. Tasks with an unfinished
-   dependency stay queued (do not start them; see write-back for `Blocked`).
+   Not every board has a `Depends on` column. Fetch the data source once to see
+   its schema; if `Depends on` is absent, omit it from the SELECT and treat every
+   task as having no cross-task dependency.
+2. Build the cross-task graph from `Depends on` (when the column exists): a task
+   is runnable only when every task it depends on is already `Done`. Tasks with an
+   unfinished dependency stay queued (do not start them; see write-back for
+   `Blocked`). Boards without `Depends on` support standalone tasks only.
 3. For each runnable task, fetch its page (Notion `fetch`) and extract the FIRST
    fenced ```yaml block from the body. Parse its `phases:` - this is the same
    phase structure the YAML stub uses. The `Task` title is the `<task>` name;
    the project is this board's repo.
+   SKIP any `To do` row whose body has NO fenced ```yaml `phases:` block: a shared
+   board may hold human-authored tasks that premier did not design. Only rows
+   carrying a valid spec block are premier tasks - leave the rest untouched.
 4. Run each task through the SAME core Algorithm (steps 1-8: integration branch,
    worktrees, dispatch, wait, review, auto-fix, merge, phase barrier, final merge
-   to `main`). Nothing in the loop changes; only the source of the spec differs.
+   to `<base>`). Nothing in the loop changes; only the source of the spec differs.
 5. Respect the cross-task limit of 5 crewmates in flight across all running tasks.
 
 ## Status write-back (Notion mode only)
@@ -57,8 +64,10 @@ On `запускай` (the user says "запускай" / "launch" / "go"):
 Update the task's Notion page (Notion `update-page`) at these transitions:
 
 - A task is picked up for execution -> set `Status = In Progress`.
-- A task's final merge to `main` succeeds -> set `Status = Done` and write the
-  crewmate summary into `Result`.
+- A task's phases have all landed - final merge to `<base>` succeeded, OR (in
+  leave-for-review mode) they all landed on the integration branch -> set
+  `Status = Done` and write the crewmate summary into `Result` (in review mode,
+  note in `Result` that it is on the branch, not merged to `<base>`).
 - A task cannot start because a dependency is not yet `Done`, OR a subtask is
   stuck after the 2 auto-fix attempts -> set `Status = Blocked` and put the
   reason in `Result`.
@@ -86,11 +95,16 @@ directory of other refs. The integration branch is therefore a sibling leaf
 
 ## Algorithm
 
-1. **Setup.** Check out the integration branch in the target project's main
-   working tree, created from `main` if absent:
-   `git -C <project> switch -c premier/<task>/_integration main`
+1. **Setup.** First determine `<base>`, the repo's default branch - do NOT assume
+   `main`:
+   `git -C <project> symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@'`
+   If that prints nothing (no remote HEAD), fall back to the branch currently
+   checked out: `git -C <project> branch --show-current`.
+   Then check out the integration branch in the target project's main working
+   tree, created from `<base>` if absent:
+   `git -C <project> switch -c premier/<task>/_integration <base>`
    (or `git -C <project> switch premier/<task>/_integration` if it already
-   exists). Subtask branches merge INTO this checked-out branch; `main` is only
+   exists). Subtask branches merge INTO this checked-out branch; `<base>` is only
    touched at step 7.
 
 2. **Order phases** by `depends_on` (topological). A phase is *ready* when every
@@ -106,7 +120,9 @@ directory of other refs. The integration branch is therefore a sibling leaf
        there; do not touch any other path."
      - "Read and obey `<project>/CLAUDE.md`."
      - The subtask `brief` and its `accept` criterion.
-     - "Run the project's own checks if any. Then commit your work in this
+     - "Run the project's own checks if any. If this is a monorepo and your checks
+       need a sibling workspace package built first (e.g. its `dist`/types), build
+       that dependency before running them. Then commit your work in this
        worktree. Report back: done|blocked, the files you changed, and whether
        checks passed."
    - Track the subtask as `running` with attempts=0.
@@ -136,10 +152,13 @@ directory of other refs. The integration branch is therefore a sibling leaf
    next ready phase (back to step 3). The next phase's worktrees branch off the
    now-updated integration branch, so they see this phase's outputs.
 
-7. **Finish.** When all phases are landed, auto-merge to `main` (no human gate):
-   `git -C <project> switch main`
+7. **Finish.** When all phases are landed, auto-merge to `<base>` (no human gate):
+   `git -C <project> switch <base>`
    `git -C <project> merge --no-ff premier/<task>/_integration -m "premier: complete <task>"`
-   unless the human said otherwise for this task in chat.
+   unless the human said otherwise for this task in chat. In particular, if the
+   human asked to "leave the branch for review", STOP here: keep the integration
+   branch, do not switch to `<base>` or merge, and report the branch name for
+   their review/PR.
 
 8. **Cleanup.** Prune any remaining worktrees: `git -C <project> worktree prune`.
    Report a final summary: what landed, what (if anything) is blocked.
@@ -147,7 +166,8 @@ directory of other refs. The integration branch is therefore a sibling leaf
 ## Rules
 
 - Never do a subtask's work yourself. You dispatch, review, merge, advance.
-- Integration branch accumulates phases; `main` only changes at step 7.
+- Integration branch accumulates phases; `<base>` only changes at step 7 (and
+  not at all in leave-for-review mode).
 - All git commits you make use `-c user.email` / `-c user.name` only if the
   target repo has no configured identity; otherwise use the repo's own.
 - Concurrency: at most 5 crewmates in flight at once.

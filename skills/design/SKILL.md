@@ -33,8 +33,16 @@ in). If the repo is unclear, ask for it.
      phase; work that consumes it goes in a later phase with
      `depends_on: [<phase id>]`.
    - Parallel-safe work within a phase becomes sibling subtasks.
+   - Ground briefs in the repo's REAL structure. Before naming files, packages,
+     or import paths in a brief, check them (read `package.json` names, existing
+     imports, directory layout) - do not assume conventional names like
+     `@scope/core`; a monorepo may name or path its packages differently.
    - For each subtask write `brief` (what the crewmate must do), `accept`
      (done-when criterion), and `review` (which review subagents run on the diff).
+   - Write `accept` as an OBSERVABLE, usable outcome, not mere presence. "exported
+     from the package's public entry so it imports by name", "the test passes",
+     "typecheck is clean" - not "the symbol exists in some file" (a type present in
+     a file but missing from the package barrel is not actually importable).
    - Default `review` by subtask nature and state your choice, picking from the
      roster in `docs/review-agents.md`: logic/correctness -> `code-quality`;
      structure/boundaries -> `architect`; untrusted input, authz, or secrets ->
