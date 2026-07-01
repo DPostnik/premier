@@ -1,0 +1,18 @@
+{
+  "name": "premier",
+  "owner": {
+    "name": "DPostnik"
+  },
+  "metadata": {
+    "description": "Lightweight task orchestrator: design tasks, hand off execution to background worktree crewmates with auto-review and auto-merge",
+    "version": "0.0.1"
+  },
+  "plugins": [
+    {
+      "name": "premier",
+      "source": "./",
+      "description": "Lightweight orchestrator: design tasks yourself, hand off execution to background worktree crewmates with auto-review and auto-merge.",
+      "version": "0.0.1"
+    }
+  ]
+}
