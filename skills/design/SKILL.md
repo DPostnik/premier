@@ -35,11 +35,12 @@ in). If the repo is unclear, ask for it.
    - Parallel-safe work within a phase becomes sibling subtasks.
    - For each subtask write `brief` (what the crewmate must do), `accept`
      (done-when criterion), and `review` (which review subagents run on the diff).
-   - Default `review` by subtask nature and state your choice: logic/correctness
-     -> `code-reviewer`; structure/boundaries -> `architect-reviewer`; untrusted
-     input, authz, or secrets -> `security-reviewer`; checking the diff against
-     `accept` -> `requirements-checker`. Pick the few that matter; do not list
-     all four by reflex.
+   - Default `review` by subtask nature and state your choice, picking from the
+     roster in `docs/review-agents.md`: logic/correctness -> `code-quality`;
+     structure/boundaries -> `architect`; untrusted input, authz, or secrets ->
+     `security-reviewer`; checking the diff against `accept` ->
+     `requirements-checker`. Pick the few that matter; do not list all four by
+     reflex.
 
 4. **Check cross-task blockers.** Query existing rows on the board
    (Notion `query-data-sources`):
