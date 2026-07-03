@@ -103,15 +103,17 @@ This is the "session per task plus ledger": L2 detail dies with the task, status
 
 Pipeline internals stay as-is: worktree naming, integration branch, review agents, auto-fix (2 attempts), merge policy, Notion status write-back, the limit of 5, 429 back-off.
 
-## Open technical risk (resolve first in the plan)
+## L2 realization (resolved: L2b)
 
-How exactly to isolate L2 is the one unknown.
+How exactly to isolate L2 was the one unknown. It is now resolved in favor of L2b.
 
-- **L2a:** L2 is a single background coordinator agent per task that runs the whole pipeline in its own context. Cleanest possible L1 context. Requires that a background agent can itself spawn background crewmates and receive wake-on-completion - nested background agents, which the harness may not support.
-- **L2b:** L1 drives the pipeline itself but offloads every heavy step (review, merge) into sub-agents, and flushes its context from the Notion ledger between tasks. No nesting required, but compact per-subtask summaries accumulate in L1.
+- **L2a (rejected):** L2 as a single background coordinator agent per task that runs the whole pipeline in its own context. Cleanest possible L1 context, but requires two things premier does not have. First, a background agent that can itself spawn background crewmates and receive wake-on-completion - nested background agents, which are unproven. `docs/skeleton-findings.md` line 51 records that the proven core is the MAIN session driving the loop and the harness waking it on each background completion; nesting was never demonstrated. Second, even a working coordinator could not do Notion status write-back, because subagents have no Notion MCP tools (`skills/design/SKILL.md` Rules) - write-back is forced into L1 regardless.
+- **L2b (chosen):** L1 drives the pipeline on the proven main-session mechanism, but every verbose step (crewmate work, review, merge) runs in a subagent whose noise stays in that subagent. What lands in L1's transcript is bounded to compact per-subtask summaries (`landed: N files` / `blocked: reason`).
 
-Target **L2a**, with **L2b as a guaranteed fallback**.
-Which is possible is the first thing to verify empirically in the plan.
+L2b does not give the pristine L1 that L2a promised - compact summaries do accumulate.
+The ledger property covers the gap: L1 holds nothing durable it cannot rebuild from Notion, so when context grows heavy and compaction drops the old summaries, L1 rehydrates task status from the board.
+Continuity survives; execution detail is disposable.
+This runs on premier's proven core rather than an unproven harness capability, which matches premier's ethos.
 
 ## Success criteria
 
