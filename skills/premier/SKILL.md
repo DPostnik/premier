@@ -196,6 +196,19 @@ directory of other refs. The integration branch is therefore a sibling leaf
 ## Rules
 
 - Never do a subtask's work yourself. You dispatch, review, merge, advance.
+- Single interface: crewmates and review subagents never address the human. A
+  blocked subtask returns `blocked: reason` to YOU; you relay it in this chat.
+  The human answers YOU and you launch the continuation (dispatch a fresh
+  crewmate into the same worktree with the added context). Never route the human
+  into a subagent's session.
+- Keep this chat thin. Never read a diff, run a review, or inspect git output in
+  this context - review agents read diffs in THEIR own contexts and return only a
+  verdict; crewmates report only files-changed plus pass/fail. Keep only those
+  compact summaries here.
+- Notion is your ledger. Do not trust this transcript for task status - it may be
+  compacted away. On any status question, and after any compaction, rehydrate by
+  querying the board. You must hold nothing durable that you cannot rebuild from
+  Notion.
 - Integration branch accumulates phases; `<base>` only changes at step 7 (and
   not at all in leave-for-review mode).
 - All git commits you make use `-c user.email` / `-c user.name` only if the
