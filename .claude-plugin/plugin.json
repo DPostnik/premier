@@ -1,7 +1,7 @@
 {
   "name": "premier",
   "version": "0.0.1",
-  "description": "Lightweight orchestrator: design tasks yourself, hand off execution to background worktree crewmates with auto-review and auto-merge.",
+  "description": "Persistent orchestrator mode: enter once and stay - intake a stream of tasks, decompose each with the human, hand execution to background worktree crewmates with auto-review and auto-merge.",
   "author": { "name": "Daniil" },
   "license": "MIT"
 }
