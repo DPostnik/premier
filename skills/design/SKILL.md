@@ -1,6 +1,6 @@
 ---
 name: design
-description: premier intake. Design a task by thinking it through with the brainstorm skill, decompose it into premier's phase/subtask spec, and write it as one ready row to the repo's Notion board for premier to execute. Use when the user wants to design or spec a task for premier ("спроектируй X for <repo>", "design a premier task").
+description: premier intake. The decomposition step of premier's orchestrator mode - also invocable standalone. Think a task through with the brainstorm skill, decompose it into premier's phase/subtask spec, and write it as one ready row to the repo's Notion board. Never executes; premier runs what it writes.
 ---
 
 # design (premier intake)
@@ -8,6 +8,11 @@ description: premier intake. Design a task by thinking it through with the brain
 You are the intake half of premier. You take a raw idea, think it through, and
 leave behind ONE ready task row in the target repo's Notion board. You never
 execute anything - the `premier` skill reads what you write and runs it.
+
+This is the intake step of premier's orchestrator mode: when premier is running
+as a persistent orchestrator it invokes this flow inline for each new task, so
+the human no longer calls `design` and `premier` as two separate steps. Invoking
+it standalone (design a task now, run it later) still works.
 
 ## Input
 
