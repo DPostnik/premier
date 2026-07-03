@@ -163,9 +163,11 @@ directory of other refs. The integration branch is therefore a sibling leaf
 
 5. **On each crewmate completion:**
    - **Review.** For each agent in the subtask's `review` list, dispatch it
-     (foreground `Agent`) on the worktree diff:
-     `git -C <worktree> diff premier/<task>/_integration...HEAD`
-     Ask it for a verdict: clean, or a list of concrete problems.
+     (foreground `Agent`) and have IT read the diff in its own context - do not
+     read the diff here:
+     "Review `git -C <worktree> diff premier/<task>/_integration...HEAD`. Return
+     only a verdict: `clean`, or a bulleted list of concrete problems." You keep
+     the verdict, not the diff.
    - **If problems and attempts < 2:** re-dispatch the crewmate (background)
      into the same worktree with the review feedback appended to the brief.
      attempts += 1. Return to Wait.
